@@ -1,0 +1,1 @@
+export const FIREBASE_AUTH_BASE_URL = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/";
