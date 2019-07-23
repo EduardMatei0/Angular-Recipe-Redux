@@ -1,23 +1,29 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NgForm } from '@angular/forms';
-import { AuthService, AuthResponseData } from '../auth.service';
-import { Observable } from 'rxjs';
-import { Router } from '@angular/router';
+import { Store } from '@ngrx/store';
+import * as fromApp from '../../store/app.reducer';
+import * as AuthActions from '../store/auth.actions';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-auth',
   templateUrl: './auth.component.html',
   styleUrls: ['./auth.component.css']
 })
-export class AuthComponent implements OnInit {
+export class AuthComponent implements OnInit, OnDestroy {
 
   isLoginMode = true;
   isLoading = false;
   error: string = null;
+  private storeSub: Subscription;
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(private store: Store<fromApp.AppState>) { }
 
   ngOnInit() {
+   this.storeSub = this.store.select('auth').subscribe(authState => {
+      this.isLoading = authState.loading;
+      this.error = authState.authError;
+    })
   }
 
   onSwitchMode() {
@@ -32,29 +38,24 @@ export class AuthComponent implements OnInit {
     const email = authForm.value.email;
     const password = authForm.value.password;
 
-    this.isLoading = true;
-
-    let authObs: Observable<AuthResponseData>;
-
     if (this.isLoginMode) {
       // login
-      authObs = this.authService.login(email, password);
+      this.store.dispatch(new AuthActions.LoginStart({
+        email: email,
+        password: password
+      }))
     } else {
       // signUp
-      authObs =  this.authService.signUp(email, password);
+      this.store.dispatch(new AuthActions.SingupStart({
+        email: email,
+        password: password
+      }))
     }
-
-    authObs.subscribe(
-      resData =>  {
-        this.isLoading = false;
-        this.router.navigate(['/recipes'])
-      },
-      errorMessage => {
-        this.error = errorMessage;
-        this.isLoading = false;
-      }
-    );
     
     authForm.reset();
+  }
+
+  ngOnDestroy() {
+    this.storeSub.unsubscribe();
   }
 }
