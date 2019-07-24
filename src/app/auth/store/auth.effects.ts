@@ -22,13 +22,14 @@ export interface AuthResponseData {
 
 const handleAuthentication = (resData) => {
     const expirationDate = new Date(new Date().getTime() + +resData.expiresIn * 1000);
-    const user = new User(resData.email, resData.localId, resData.idToken, resData.expirationDate);
+    const user = new User(resData.email, resData.localId, resData.idToken, resData.expiresIn);
     localStorage.setItem('userData', JSON.stringify(user));
     return new AuthActions.AuthenticateSucces({
         email: resData.email,
         userId: resData.localId,
         token: resData.idToken,
-        expirationDate: expirationDate
+        expirationDate: expirationDate,
+        redirect: true
     });
 
 }
@@ -118,9 +119,9 @@ export class AuhtEffects {
               if (!userData) {
                 return { type: 'DUMMY'};
               }
-          
               const loadedUser = new User(userData.email, userData.id, userData._token, new Date(userData._tokenExpirationDate));
           
+
               if (loadedUser.token) {
                 const expirationDuration = new Date(userData._tokenExpirationDate).getTime() - new Date().getTime();
                 this.authService.setLogoutTimer(expirationDuration);  
@@ -128,7 +129,8 @@ export class AuhtEffects {
                   email: loadedUser.email,
                   userId: loadedUser.id,
                   token: loadedUser.token,
-                  expirationDate: new Date(userData._tokenExpirationDate)
+                  expirationDate: new Date(userData._tokenExpirationDate),
+                  redirect: false
                 })
               }
               return { type: 'DUMMY'};
@@ -138,6 +140,10 @@ export class AuhtEffects {
     @Effect({ dispatch: false})
     authRedirect = this.actions$.pipe(
         ofType(AuthActions.AUTHENTICATE_SUCCES),
-        tap(() => this.router.navigate(['/']))
+        tap((authSuccesAction: AuthActions.AuthenticateSucces) => {
+            if (authSuccesAction.payload.redirect) {
+                this.router.navigate(['/'])
+            }
+        })
     )
 }
